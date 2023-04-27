@@ -199,5 +199,3 @@ cython_debug/
 #.idea/
 
 .vscode
-
-!.gitkeep
