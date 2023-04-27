@@ -1,18 +1,12 @@
 
-############ variables ############
+# variables
 variable "aws_region" {
   description = "AWS region for all resources."
   type        = string
   default     = "ap-south-1"
 }
 
-# variable "create_trail" {
-#   description = "Set to false if a Cloudtrail trail for management events exists"
-#   type        = bool
-#   default     = true
-# }
-
-########## PROVIDERS ##########
+# PROVIDERS
 terraform {
   required_providers {
     aws = {
@@ -44,7 +38,7 @@ provider "aws" {
   }
 }
 
-############ CLOUDTRAIL ############
+# CLOUDTRAIL
 data "aws_caller_identity" "current" {}
 
 resource "aws_cloudtrail" "autotag-trail" {
@@ -93,7 +87,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket_policy" {
 }
 
 
-############ EVENTBRIDGE ############
+# EVENTBRIDGE
 resource "aws_cloudwatch_event_rule" "default" {
   name        = "autotag-rule"
   description = "Triggers Lambda on cloudtrail api events"
@@ -101,8 +95,12 @@ resource "aws_cloudwatch_event_rule" "default" {
   event_pattern = jsonencode({
     "detail-type" : ["AWS API Call via CloudTrail"],
     "detail" : {
-      "eventSource" : ["sns.amazonaws.com"],
-      "eventName" : ["CreateTopic"]
+      "eventSource" : [
+        "sns.amazonaws.com",
+      ],
+      "eventName" : [
+        "CreateTopic",
+      ]
     }
   })
 }
@@ -122,7 +120,7 @@ resource "aws_lambda_permission" "event_brige_rule" {
   depends_on    = [aws_lambda_function.autotag]
 }
 
-######################## LAMBDA ########################
+# LAMBDA
 data "aws_iam_policy_document" "lambda_assume_role_policy" {
   statement {
     effect = "Allow"
@@ -136,24 +134,18 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
 
 data "aws_iam_policy_document" "lambda_inline_policy" {
   statement {
-    effect    = "Allow"
-    actions   = ["SNS:TagResource", "iam:ListRoleTags", "iam:ListUserTags"]
+    effect = "Allow"
+    actions = [
+      "tag:TagResources",
+      "tag:TagResource",
+      "SNS:TagResource",
+    ]
     resources = ["*"]
   }
   statement {
     effect    = "Allow"
-    actions   = ["tag:TagResources", "tag:TagResource"]
+    actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["*"]
-  }
-  statement {
-    effect    = "Allow"
-    actions   = ["logs:CreateLogGroup"]
-    resources = ["arn:aws:logs:${var.aws_region}:*:log-group:*"]
-  }
-  statement {
-    effect    = "Allow"
-    actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
-    resources = ["${aws_cloudwatch_log_group.lambda_log_grp.arn}:*"]
   }
 }
 

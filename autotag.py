@@ -12,25 +12,14 @@ def lambda_handler(event, context):
         print("no eventName found. exiting...")
         return
 
-    event_name = event['detail']['eventName']
-    resource_arn = None
-
-    # NOTE: the eventName determines the service to target
-    if event_name == "CreateTopic":
-        resource_arn = event.get("detail").get(
-            "responseElements").get("topicArn")
-    # elif event_name == "CreateFunction":
-    #     resource_arn = event['detail']['responseElements']['functionArn']
-    # elif event_name == "CreateBucket":
-    #     resource_arn = "arn:aws:s3:::" + event['detail']['responseElements']['location']
-
+    resource_arn = get_resource_arn(event)
     if not resource_arn:
         print("no resources found for tagging...")
         return
 
-    # NOTE: the tags to apply
+    # TODO: replace with your own tags
     tags = {
-        "TaggedBy": "Terraform",
+        "TaggedBy": "autotag",
         "TaggedTimestamp": str(time.time()),
     }
     tagging_client = boto3.client('resourcegroupstaggingapi')
@@ -44,3 +33,17 @@ def lambda_handler(event, context):
             f'failed to tag resource(s): {response.get("FailedResourcesMap")}')
     else:
         print(f"successfully tagged resource(s)! {resource_arn}")
+
+
+def get_resource_arn(event):
+    # NOTE: the eventName determines the service to target
+    event_name = event.get("detail", {}).get("eventName")
+    resource_arn = None
+
+    if event_name == "CreateTopic":
+        resource_arn = event.get("detail", {}).get(
+            "responseElements", {}).get("topicArn")
+
+    # TODO: handle other resource types as needed
+
+    return resource_arn
